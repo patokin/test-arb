@@ -129,6 +129,36 @@
         </div>
     </div>
 
+    <!-- Add popup HTML structure before closing body tag -->
+    <div class="modal-overlay" id="orderModal">
+        <div class="modal">
+            <button class="close-button" aria-label="Закрыть"></button>
+            <h1 class="modal-title">Заказать тариф «Избранный»</h1>
+
+            <div class="form-container">
+                <input type="text" class="input-field" id="inn" placeholder="Номер ИНН">
+                <div class="error-message" id="inn-error">Пожалуйста, введите корректный ИНН</div>
+
+                <input type="tel" class="input-field" id="phone" placeholder="Телефон для связи">
+                <div class="error-message" id="phone-error">Пожалуйста, введите корректный номер телефона</div>
+
+                <input type="email" class="input-field" id="email" placeholder="E-mail для связи">
+                <div class="error-message" id="email-error">Пожалуйста, введите корректный email</div>
+
+                <label class="checkbox-container">
+                    <div class="custom-checkbox" id="consent-checkbox">
+                        <span class="checkmark"></span>
+                    </div>
+                    <span class="checkbox-text">Согласен с обработкой персональных данных</span>
+                    <input type="checkbox" id="consent" style="display: none;">
+                </label>
+                <div class="error-message" id="consent-error">Необходимо согласие на обработку персональных данных</div>
+
+                <button class="submit-button" id="submit-btn">Заказать тариф «Избранный»</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const brands = {
             petrol: [
@@ -172,7 +202,7 @@
             const fuelType = $('#fuelType').val();
             const brandSelector = $('#brand-selector');
             brandSelector.empty();
-            
+
             brands[fuelType].forEach((brand, index) => {
                 const isActive = index === 0 ? 'active' : '';
                 brandSelector.append(`
@@ -190,11 +220,11 @@
         function updateServices() {
             const servicesGrid = $('#services-grid');
             servicesGrid.empty();
-            
+
             services.forEach((service, index) => {
                 const isActive = index === 0 ? 'active' : '';
                 let iconHtml = '';
-                
+
                 if (service.icon === 'parking') {
                     iconHtml = `
                         <div style="width: 32px; height: 32px; border: 3px solid #ffffff; border-radius: 7px; position: relative;">
@@ -227,13 +257,15 @@
         function updatePromo(tariff) {
             const promoOptions = $('#promo-options');
             promoOptions.empty();
-            
+
             promos[tariff].forEach((value, index) => {
                 const isActive = index === 0 ? 'active' : '';
                 promoOptions.append(`
                     <div class="promo-option">
                         <div class="promo-circle ${isActive}">
-                            ${index === 0 ? '<div class="promo-check"><img src="{{ asset("assets/images/img_vector_13.svg") }}" alt="Check icon" class="promo-check-icon"></div>' : ''}
+                            <div class="promo-check">
+                                <img src="{{ asset('assets/images/img_vector_13.svg') }}" alt="Check icon" class="promo-check-icon">
+                            </div>
                             <div class="promo-value ${isActive}">${value}%</div>
                         </div>
                         <div class="promo-description ${isActive}">${getPromoDescription(value)}</div>
@@ -335,14 +367,14 @@
             const sliderRect = slider[0].getBoundingClientRect();
             let position = (clientX - sliderRect.left) / sliderRect.width;
             position = Math.max(0, Math.min(1, position));
-            
+
             const value = Math.round(position * 500);
             volumeDisplay.text(value);
             pumpingInput.val(value);
-            
+
             thumb.css('left', `${position * 100}%`);
             fill.css('width', `${position * 100}%`);
-            
+
             calculateSavings();
         }
 
@@ -365,26 +397,129 @@
             updateSliderPosition(e.clientX);
         });
 
-        // Form submission
-        $('#submit-button').on('click', function(e) {
-            e.preventDefault();
-            $.ajax({
-                url: '{{ route("calculator.submit") }}',
-                method: 'POST',
-                data: $('#calculatorForm').serialize(),
-                success: function(response) {
-                    alert(response.message);
-                },
-                error: function(xhr) {
-                    alert(xhr.responseJSON.error || 'Произошла ошибка при отправке формы');
-                }
-            });
-        });
-
         // Initial setup
         updateBrands();
         updateServices();
         updatePromo('Избранный');
+
+        // Add popup functionality
+        $(document).ready(function() {
+            const innInput = $('#inn');
+            const phoneInput = $('#phone');
+            const emailInput = $('#email');
+            const consentCheckbox = $('#consent-checkbox');
+            const consentInput = $('#consent');
+            const submitButton = $('#submit-btn');
+            const closeButton = $('.close-button');
+            const modalOverlay = $('#orderModal');
+
+            const innError = $('#inn-error');
+            const phoneError = $('#phone-error');
+            const emailError = $('#email-error');
+            const consentError = $('#consent-error');
+
+            // Show modal when clicking the order button
+            $('#submit-button').click(function() {
+                modalOverlay.css('display', 'flex');
+            });
+
+            // Close modal when clicking close button or overlay
+            closeButton.click(function() {
+                modalOverlay.css('display', 'none');
+            });
+
+            modalOverlay.click(function(e) {
+                if (e.target === this) {
+                    modalOverlay.css('display', 'none');
+                }
+            });
+
+            // Toggle checkbox
+            consentCheckbox.click(function() {
+                consentInput.prop('checked', !consentInput.prop('checked'));
+                if (consentInput.prop('checked')) {
+                    consentCheckbox.css('backgroundColor', '#00cfcc');
+                    consentCheckbox.find('.checkmark').css('display', 'block');
+                    consentError.css('display', 'none');
+                } else {
+                    consentCheckbox.css('backgroundColor', '#fafafa');
+                    consentCheckbox.find('.checkmark').css('display', 'none');
+                }
+            });
+
+            // Initialize checkbox state
+            consentCheckbox.css('backgroundColor', '#fafafa');
+            consentCheckbox.find('.checkmark').css('display', 'none');
+
+            // Form validation
+            function validateInn(inn) {
+                return /^(\d{10}|\d{12})$/.test(inn);
+            }
+
+            function validatePhone(phone) {
+                return /^\+?[78][-\(]?\d{3}\)?-?\d{3}-?\d{2}-?\d{2}$/.test(phone);
+            }
+
+            function validateEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            // Input validation
+            innInput.on('input', function() {
+                if (!validateInn(this.value)) {
+                    innError.css('display', 'block');
+                } else {
+                    innError.css('display', 'none');
+                }
+            });
+
+            phoneInput.on('input', function() {
+                if (!validatePhone(this.value)) {
+                    phoneError.css('display', 'block');
+                } else {
+                    phoneError.css('display', 'none');
+                }
+            });
+
+            emailInput.on('input', function() {
+                if (!validateEmail(this.value)) {
+                    emailError.css('display', 'block');
+                } else {
+                    emailError.css('display', 'none');
+                }
+            });
+
+            // Form submission
+            submitButton.click(function() {
+                let isValid = true;
+
+                if (!validateInn(innInput.val())) {
+                    innError.css('display', 'block');
+                    isValid = false;
+                }
+
+                if (!validatePhone(phoneInput.val())) {
+                    phoneError.css('display', 'block');
+                    isValid = false;
+                }
+
+                if (!validateEmail(emailInput.val())) {
+                    emailError.css('display', 'block');
+                    isValid = false;
+                }
+
+                if (!consentInput.prop('checked')) {
+                    consentError.css('display', 'block');
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    // Here you would typically send the form data to the server
+                    alert('Форма успешно отправлена!');
+                    modalOverlay.css('display', 'none');
+                }
+            });
+        });
     </script>
 </body>
-</html> 
+</html>

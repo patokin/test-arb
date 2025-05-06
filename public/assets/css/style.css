@@ -432,6 +432,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    cursor: pointer;
 }
 
 .promo-circle {
@@ -458,9 +459,13 @@ body {
     height: 33px;
     background-color: #00cfcc;
     border-radius: 50%;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
+}
+
+.promo-circle.active .promo-check {
+    display: flex;
 }
 
 .promo-check-icon {
@@ -550,4 +555,174 @@ body {
 .order-button-arrow {
     width: 19px;
     height: 9px;
+}
+
+/* Popup styles */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal {
+    position: relative;
+    width: 866px;
+    height: 711px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 50px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.modal-title {
+    font-size: 50px;
+    font-weight: 500;
+    line-height: 50px;
+    text-align: center;
+    color: #000000;
+    margin-bottom: 80px;
+}
+
+.input-field {
+    width: 477px;
+    height: 79px;
+    background-color: #fafafa;
+    border: 1px solid #e0e7e9;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    padding: 25px;
+    font-size: 20px;
+    font-weight: 400;
+    color: #636363;
+    outline: none;
+}
+
+.input-field::placeholder {
+    color: #636363;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+    margin-bottom: 30px;
+    cursor: pointer;
+}
+
+.custom-checkbox {
+    width: 27px;
+    height: 27px;
+    background-color: #00cfcc;
+    border-radius: 13px;
+    margin-right: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.checkbox-text {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 20px;
+    color: #000000;
+}
+
+.submit-button {
+    width: 477px;
+    height: 70px;
+    background-color: #ffdd21;
+    border-radius: 5px;
+    border: none;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 20px;
+    color: #000000;
+    cursor: pointer;
+    box-shadow: 0px 14px 24px rgba(255, 221, 33, 0.4);
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.submit-button:hover {
+    background-color: #f5d41f;
+    transform: translateY(-2px);
+}
+
+.submit-button:active {
+    transform: translateY(0);
+}
+
+.close-button {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 26px;
+    height: 26px;
+    background: url("data:image/svg+xml,%3Csvg width='26' height='26' viewBox='0 0 26 26' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L25 25M25 1L1 25' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.checkmark {
+    display: block;
+    width: 11px;
+    height: 7px;
+    background: url("data:image/svg+xml,%3Csvg width='11' height='7' viewBox='0 0 11 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 3.5L4 6.5L10 1' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.error-message {
+    color: #ff3b30;
+    font-size: 14px;
+    margin-top: -15px;
+    margin-bottom: 15px;
+    display: none;
+    text-align: left;
+    width: 477px;
+}
+
+@media (max-width: 900px) {
+    .modal {
+        width: 90%;
+        height: auto;
+        padding: 30px 20px;
+    }
+
+    .modal-title {
+        font-size: 36px;
+        line-height: 40px;
+        margin-bottom: 40px;
+    }
+
+    .input-field, .submit-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-title {
+        font-size: 28px;
+        line-height: 32px;
+    }
+
+    .checkbox-text {
+        font-size: 16px;
+    }
+
+    .submit-button {
+        font-size: 18px;
+    }
 }
