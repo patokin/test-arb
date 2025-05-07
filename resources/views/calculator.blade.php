@@ -73,7 +73,7 @@
                     <div class="tariff-label">Подходящий тариф</div>
                     <div class="tariff-badge">
                         <div class="tariff-badge-star"></div>
-                        <div class="tariff-badge-text">Избранный</div>
+                        <div class="tariff-badge-text" id="current-tariff">Избранный</div>
                     </div>
                 </div>
 
@@ -94,7 +94,7 @@
                     <div class="promo-options" id="promo-options">
                         <!-- Promo options will be dynamically populated -->
                     </div>
-                    <input type="hidden" name="promo" id="promo">
+                    <input type="hidden" name="promo" id="promo" value="5">
                 </div>
 
                 <div class="horizontal-line"></div>
@@ -164,12 +164,9 @@
 
         const brands = {
             petrol: [
-                { name: 'Shell', logo: 'img_vector.svg' },
-                { name: 'Газпром', logo: 'img_group_82.svg' },
                 { name: 'Роснефть', logo: 'img_group_38.svg' },
                 { name: 'Татнефть', logo: 'img_group_81.svg' },
-                { name: 'Лукойл', logo: 'img_rect2493.svg' },
-                { name: 'Башнефть', logo: 'img_ellipse_11.png' }
+                { name: 'Лукойл', logo: 'img_rect2493.svg' }
             ],
             gas: [
                 { name: 'Shell', logo: 'img_vector.svg' },
@@ -256,38 +253,6 @@
             });
         }
 
-        function updatePromo(tariff) {
-            const promoOptions = $('#promo-options');
-            promoOptions.empty();
-
-            promos[tariff].forEach((value, index) => {
-                const isActive = index === 0 ? 'active' : '';
-                promoOptions.append(`
-                    <div class="promo-option">
-                        <div class="promo-circle ${isActive}">
-                            <div class="promo-check">
-                                <img src="{{ asset('assets/images/img_vector_13.svg') }}" alt="Check icon" class="promo-check-icon">
-                            </div>
-                            <div class="promo-value ${isActive}">${value}%</div>
-                        </div>
-                        <div class="promo-description ${isActive}">${getPromoDescription(value)}</div>
-                    </div>
-                `);
-            });
-            $('#promo').val(promos[tariff][0]);
-            $('#modal-promo').val(tariff);
-        }
-
-        function getPromoDescription(value) {
-            switch(value) {
-                case 50: return 'Экономии на штрафах';
-                case 20: return 'Возврат НДС';
-                case 5: return 'Скидка на мойку';
-                case 2: return 'Скидка на топливо';
-                default: return '';
-            }
-        }
-
         function getTariff(fuelType, pumping) {
             if (fuelType === 'petrol') {
                 if (pumping < 100) return 'Эконом';
@@ -304,6 +269,74 @@
             }
         }
 
+        function updateTariffAndPromo() {
+            const fuelType = $('#fuelType').val();
+            const pumping = parseInt($('#pumping').val());
+            const tariff = getTariff(fuelType, pumping);
+            
+            $('#current-tariff').text(tariff);
+            updatePromo(tariff);
+            calculateSavings();
+        }
+
+        function updatePromo(tariff) {
+            const promoOptions = $('#promo-options');
+            promoOptions.empty();
+
+            promos[tariff].forEach((value, index) => {
+                const isActive = index === promos[tariff].length - 1 ? 'active' : '';
+                promoOptions.append(`
+                    <div class="promo-option">
+                        <div class="promo-circle ${isActive}">
+                            <div class="promo-check">
+                                <img src="{{ asset('assets/images/img_vector_13.svg') }}" alt="Check icon" class="promo-check-icon">
+                            </div>
+                            <div class="promo-value ${isActive}">${value}%</div>
+                        </div>
+                        <div class="promo-description ${isActive}">${getPromoDescription(value)}</div>
+                    </div>
+                `);
+            });
+            $('#promo').val(promos[tariff][promos[tariff].length - 1]);
+        }
+
+        function getPromoDescription(value) {
+            switch(value) {
+                case 50: return 'Экономии на штрафах';
+                case 20: return 'Возврат НДС';
+                case 5: return 'Скидка на мойку';
+                case 2: return 'Скидка на топливо';
+                default: return '';
+            }
+        }
+
+        function calculateSavings() {
+            const formData = $('#calculatorForm').serialize();
+            
+            $.ajax({
+                url: '{{ route("calculator.calculate") }}',
+                method: 'POST',
+                data: formData,
+                success: function(data) {
+                    $('#yearly-savings').text('от ' + data.yearly_savings);
+                    $('#monthly-savings').text('от ' + data.monthly_savings);
+                    $('#modal-region').val($('#region-select option:selected').text());
+                    $('#modal-pumping').val($('#pumping').val());
+                    $('#modal-fuelType').val($('#fuelType').val());
+                    $('#modal-brand').val($('#brand').val());
+                    $('#modal-services').val($('#services').val());
+                },
+                error: function(xhr) {
+                    console.error('Error calculating savings:', xhr.responseJSON?.error || 'Unknown error');
+                }
+            });
+        }
+
+        // Helper function to format numbers with spaces
+        function formatNumber(number) {
+            return number.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        }
+
         // Event Listeners
         $('.fuel-tab').on('click', function() {
             $('.fuel-tab').removeClass('active');
@@ -311,26 +344,31 @@
             let value = $(this).data('value');
             $('#fuelType').val(value);
             updateBrands();
-            calculateSavings();
+            updateTariffAndPromo();
         });
 
         $('#brand-selector').on('click', '.brand-item', function() {
             $('.brand-circle, .brand-name').removeClass('active');
             $(this).find('.brand-circle, .brand-name').addClass('active');
             $('#brand').val($(this).find('.brand-name').text());
-            calculateSavings();
+            updateTariffAndPromo();
         });
 
         $('#services-grid').on('click', '.service-item', function() {
+            const activeServices = $('#services-grid .service-circle.active').length;
+            if (!$(this).find('.service-circle').hasClass('active') && activeServices >= 4) {
+                return;
+            }
             $(this).find('.service-circle, .service-name').toggleClass('active');
             updateSelectedServices();
-            calculateSavings();
+            updateTariffAndPromo();
         });
 
         $('#promo-options').on('click', '.promo-option', function() {
             $('.promo-circle, .promo-value, .promo-description').removeClass('active');
             $(this).find('.promo-circle, .promo-value, .promo-description').addClass('active');
-            $('#promo').val($(this).find('.promo-value').text().replace('%', ''));
+            const promoValue = $(this).find('.promo-value').text().replace('%', '');
+            $('#promo').val(promoValue);
             calculateSavings();
         });
 
@@ -342,26 +380,6 @@
                 }
             });
             $('#services').val(selectedServices.join(','));
-        }
-
-        function calculateSavings() {
-            $.ajax({
-                url: '{{ route("calculator.calculate") }}',
-                method: 'POST',
-                data: $('#calculatorForm').serialize(),
-                success: function(data) {
-                    $('#yearly-savings').text(data.yearly_savings);
-                    $('#monthly-savings').text(data.monthly_savings);
-                    $('#modal-region').val($('#region-select option:selected').text());
-                    $('#modal-pumping').val($('#pumping').val());
-                    $('#modal-fuelType').val($('#fuelType').val());
-                    $('#modal-brand').val($('#brand').val());
-                    $('#modal-services').val($('#services').value);
-                },
-                error: function(xhr) {
-                    console.error('Error calculating savings:', xhr.responseJSON.error);
-                }
-            });
         }
 
         // Volume slider functionality
@@ -386,7 +404,7 @@
                 volumeDisplay.text(maxPumping);
             }
             updateBrands();
-            calculateSavings();
+            updateTariffAndPromo();
         });
 
         function updateSliderPosition(clientX) {
@@ -400,7 +418,7 @@
             thumb.css('left', `${position * 100}%`);
             fill.css('width', `${position * 100}%`);
 
-            calculateSavings();
+            updateTariffAndPromo();
         }
 
         thumb.on('mousedown', function(e) {
@@ -425,7 +443,7 @@
         // Initial setup
         updateBrands();
         updateServices();
-        updatePromo('Избранный');
+        updateTariffAndPromo();
 
         // Add popup functionality
         $(document).ready(function() {
@@ -549,7 +567,7 @@
                             modalOverlay.css('display', 'none');
                         },
                         error: function(xhr) {
-                            console.error('Error calculating savings:', xhr.responseJSON.error);
+                            console.error('Error submitting form:', xhr.responseJSON?.error || 'Unknown error');
                             alert('Ошибка!');
                         }
                     });

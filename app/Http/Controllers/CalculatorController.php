@@ -3,10 +3,23 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class CalculatorController extends Controller
 {
+    // Fuel prices per ton
+    private const FUEL_PRICES = [
+        'petrol' => 500200, // Бензин: 500,200 ₽/ton
+        'gas' => 200100,    // Газ: 200,100 ₽/ton
+        'diesel' => 320700  // ДТ: 320,700 ₽/ton
+    ];
+
+    // Tariff discounts
+    private const TARIFF_DISCOUNTS = [
+        'Эконом' => 3,
+        'Избранный' => 5,
+        'Премиум' => 7
+    ];
+
     public function index()
     {
         return view('calculator');
@@ -14,120 +27,68 @@ class CalculatorController extends Controller
 
     public function calculate(Request $request)
     {
-        $region = $request->input('region');
-        $pumping = $request->input('pumping');
         $fuelType = $request->input('fuelType');
-        $brand = $request->input('brand');
-        $services = $request->input('services');
-        $promo = $request->input('promo');
+        $pumping = (int)$request->input('pumping');
+        $promoDiscount = (int)$request->input('promo');
 
-        // Calculate savings based on input
-        $yearlySavings = $this->calculateYearlySavings($region, $pumping, $fuelType, $brand, $services, $promo);
-        $monthlySavings = $yearlySavings / 12;
+        // Get tariff based on fuel type and pumping volume
+        $tariff = $this->getTariff($fuelType, $pumping);
+
+        // Get tariff discount percentage
+        $tariffDiscount = self::TARIFF_DISCOUNTS[$tariff];
+
+        // Calculate base cost
+        $baseCost = self::FUEL_PRICES[$fuelType] * $pumping;
+
+        // Calculate discounts
+        $tariffDiscountAmount = ($baseCost * $tariffDiscount) / 100;
+        $promoDiscountAmount = ($baseCost * $promoDiscount) / 100;
+
+        $monthlyCost = $baseCost - ($tariffDiscountAmount + $promoDiscountAmount);
+        $yearlyCost = $monthlyCost * 12;
 
         return response()->json([
-            'yearly_savings' => 'от ' . number_format($yearlySavings, 0, ',', ' ') . ' ₽',
-            'monthly_savings' => 'от ' . number_format($monthlySavings, 0, ',', ' ') . ' ₽'
+            'monthly_savings' => $this->formatNumber($monthlyCost),
+            'yearly_savings' => $this->formatNumber($yearlyCost)
         ]);
     }
 
     public function submit(Request $request)
     {
-        // Validate the request
         $validated = $request->validate([
-            'region' => 'required',
-            'pumping' => 'required|numeric|min:0',
-            'fuelType' => 'required|in:petrol,gas,diesel',
-            'brand' => 'required',
-            'inn' => 'required',
-            'phone' => 'required|min:1|max:13',
-            'email' => 'required|email',
-            'services' => '',
-            'promo' => 'required'
+            'inn' => 'required|digits_between:10,12',
+            'phone' => 'required|regex:/^\+?[78][-\(]?\d{3}\)?-?\d{3}-?\d{2}-?\d{2}$/',
+            'email' => 'required|email'
         ]);
 
-        Mail::raw('Простой текст письма', function ($message) {
-            $message->to('test@example.com')
-                ->subject('Тестовая тема');
-        });
-        // Here you would typically save the data to a database
-        // For now, we'll just return a success message
-        return response()->json([
-            'message' => 'Ваша заявка успешно отправлена!'
-        ]);
+        return response()->json(['message' => 'Ваша заявка успешно отправлена!']);
     }
 
-    private function calculateYearlySavings($region, $pumping, $fuelType, $brand, $services, $promo)
+    private function getTariff(string $fuelType, int $pumping): string
     {
-        // Base calculations
-        $basePrice = $this->getBasePrice($fuelType);
-        $volumeMultiplier = $pumping / 100; // Normalize to 100 tons
-        $regionMultiplier = $this->getRegionMultiplier($region);
-        $brandMultiplier = $this->getBrandMultiplier($brand);
-        $servicesMultiplier = $this->getServicesMultiplier($services);
-        $promoMultiplier = (100 - $promo) / 100;
+        switch ($fuelType) {
+            case 'petrol':
+                if ($pumping < 100) return 'Эконом';
+                if ($pumping < 300) return 'Избранный';
+                return 'Премиум';
 
-        // Calculate total savings
-        $yearlySavings = $basePrice * $volumeMultiplier * $regionMultiplier * $brandMultiplier * $servicesMultiplier * $promoMultiplier * 12;
+            case 'gas':
+                if ($pumping < 200) return 'Эконом';
+                if ($pumping < 700) return 'Избранный';
+                return 'Премиум';
 
-        return $yearlySavings;
-    }
+            case 'diesel':
+                if ($pumping < 150) return 'Эконом';
+                if ($pumping < 350) return 'Избранный';
+                return 'Премиум';
 
-    private function getBasePrice($fuelType)
-    {
-        return match($fuelType) {
-            'petrol' => 500200,
-            'gas' => 200100,
-            'diesel' => 320700,
-            default => 0
-        };
-    }
-
-    private function getRegionMultiplier($region)
-    {
-        return match($region) {
-            '1' => 1.2,
-            '2' => 1.1,
-            '3' => 1.0,
-            default => 1.0
-        };
-    }
-
-    private function getBrandMultiplier($brand)
-    {
-        return match($brand) {
-            'Shell' => 1.15,
-            'Газпром' => 1.1,
-            'Роснефть' => 1.05,
-            'Татнефть' => 1.1,
-            'Лукойл' => 1.15,
-            'Башнефть' => 1.05,
-            default => 1.0
-        };
-    }
-
-    private function getServicesMultiplier($services)
-    {
-        if (empty($services)) return 1.0;
-
-        $servicesArray = explode(',', $services);
-        $multiplier = 1.0;
-
-        foreach ($servicesArray as $service) {
-            $multiplier += match($service) {
-                'Штрафы' => 0.1,
-                'Парковки' => 0.05,
-                'ЭДО' => 0.08,
-                'Мойки' => 0.07,
-                'Отсрочка' => 0.12,
-                'Телематика' => 0.15,
-                'PPRPAY' => 0.09,
-                'СМС' => 0.06,
-                'Страховка' => 0.11,
-                default => 0
-            };
+            default:
+                return 'Эконом';
         }
+    }
 
-        return $multiplier;
+    private function formatNumber(float $number): string
+    {
+        return number_format($number, 0, '.', ' ') . ' ₽';
     }
 }
