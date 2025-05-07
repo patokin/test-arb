@@ -95,6 +95,7 @@
                         <!-- Promo options will be dynamically populated -->
                     </div>
                     <input type="hidden" name="promo" id="promo" value="5">
+                    <input type="hidden" name="tariff" id="tariff" value="Эконом">
                 </div>
 
                 <div class="horizontal-line"></div>
@@ -131,6 +132,7 @@
             <form id="modalForm" class="form-container">
                 @csrf
                 <input type="hidden" name="promo" id="modal-promo">
+                <input type="hidden" name="tariff" id="modal-tariff">
                 <input type="hidden" name="region" id="modal-region">
                 <input type="hidden" name="pumping" id="modal-pumping">
                 <input type="hidden" name="fuelType" id="modal-fuelType">
@@ -286,7 +288,7 @@
             promos[tariff].forEach((value, index) => {
                 const isActive = index === promos[tariff].length - 1 ? 'active' : '';
                 promoOptions.append(`
-                    <div class="promo-option" data-value="${value}">
+                    <div class="promo-option" data-value="${value}" data-tariff="${tariff}">
                         <div class="promo-circle ${isActive}">
                             <div class="promo-check">
                                 <img src="{{ asset('assets/images/img_vector_13.svg') }}" alt="Check icon" class="promo-check-icon">
@@ -298,6 +300,7 @@
                 `);
             });
             $('#promo').val(promos[tariff][promos[tariff].length - 1]);
+            $('#tariff').val(tariff);
         }
 
         function getPromoDescription(value) {
@@ -325,6 +328,8 @@
                     $('#modal-fuelType').val($('#fuelType').val());
                     $('#modal-brand').val($('#brand').val());
                     $('#modal-services').val($('#services').val());
+                    $('#modal-promo').val($('#promo').val());
+                    $('#modal-tariff').val($('#tariff').val());
                 },
                 error: function(xhr) {
                     console.error('Error calculating savings:', xhr.responseJSON?.error || 'Unknown error');
@@ -368,7 +373,9 @@
             $('.promo-circle, .promo-value, .promo-description').removeClass('active');
             $(this).find('.promo-circle, .promo-value, .promo-description').addClass('active');
             const promoValue = $(this).data('value');
+            const tariffValue = $(this).data('tariff');
             $('#promo').val(promoValue);
+            $('#tariff').val(tariffValue);
             calculateSavings();
         });
 

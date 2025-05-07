@@ -57,58 +57,50 @@ class CalculatorController extends Controller
     public function submit(Request $request)
     {
         $validated = $request->validate([
-            'inn' => 'required|digits_between:10,12',
-            'phone' => 'required|regex:/^\+?[78][-\(]?\d{3}\)?-?\d{3}-?\d{2}-?\d{2}$/',
-            'email' => 'required|email',
-            'region' => 'required',
+            'region' => 'required|string',
             'pumping' => 'required|numeric',
-            'fuelType' => 'required|in:petrol,gas,diesel',
-            'brand' => 'required',
-            'services' => 'required',
-            'promo' => 'required|numeric'
+            'fuelType' => 'required|string',
+            'brand' => 'required|string',
+            'services' => 'nullable|string',
+            'promo' => 'required|numeric',
+            'tariff' => 'required|string',
+            'email' => 'required|email'
         ]);
 
-        $fuelType = $request->input('fuelType');
-        $pumping = (int)$request->input('pumping');
-        $promoDiscount = (int)$request->input('promo');
+        // Calculate costs and savings
+        $monthlyCost = $this->calculateMonthlyCost(
+            $validated['fuelType'],
+            $validated['pumping'],
+            $validated['brand']
+        );
 
-        $tariff = $this->getTariff($fuelType, $pumping);
-        $tariffDiscount = self::TARIFF_DISCOUNTS[$tariff];
-
-        $baseCost = self::FUEL_PRICES[$fuelType] * $pumping;
-        $tariffDiscountAmount = ($baseCost * $tariffDiscount) / 100;
-        $promoDiscountAmount = ($baseCost * $promoDiscount) / 100;
-
-        $monthlyCost = $baseCost - ($tariffDiscountAmount + $promoDiscountAmount);
-        $yearlyCost = $monthlyCost * 12;
-
-        $totalDiscount = $tariffDiscount + $promoDiscount;
-        $monthlySavings = $tariffDiscountAmount + $promoDiscountAmount;
+        $totalDiscount = $validated['promo'];
+        $monthlySavings = $monthlyCost * ($totalDiscount / 100);
         $yearlySavings = $monthlySavings * 12;
 
-        $emailContent = "Результаты расчета:\n\n";
-        $emailContent .= "Регион: {$request->input('region')}\n";
-        $emailContent .= "Прокачка: {$pumping} тонн\n";
-        $emailContent .= "Тип топлива: " . $this->getFuelTypeName($fuelType) . "\n";
-        $emailContent .= "Бренд: {$request->input('brand')}\n";
-        $emailContent .= "Дополнительные услуги: {$request->input('services')}\n";
-        $emailContent .= "Тариф: {$tariff}\n";
-        $emailContent .= "Промо-акция: {$promoDiscount}%\n";
-        $emailContent .= "Стоимость топлива в месяц: " . $this->formatNumber($monthlyCost) . "\n";
-        $emailContent .= "Суммарная скидка: {$totalDiscount}%\n";
-        $emailContent .= "Экономия в месяц: " . $this->formatNumber($monthlySavings) . "\n";
-        $emailContent .= "Экономия в год: " . $this->formatNumber($yearlySavings) . "\n\n";
+        // Prepare email content
+        $emailContent = "Результаты расчета тарифа:\n\n";
+        $emailContent .= "Регион: {$validated['region']}\n";
+        $emailContent .= "Объем заправки: {$validated['pumping']} тонн\n";
+        $emailContent .= "Тип топлива: {$this->getFuelTypeName($validated['fuelType'])}\n";
+        $emailContent .= "Бренд: {$validated['brand']}\n";
+        $emailContent .= "Дополнительные услуги: " . ($validated['services'] ?: 'не выбраны') . "\n";
+        $emailContent .= "Тариф: {$validated['tariff']}\n";
+        $emailContent .= "Промо-акция: {$validated['promo']}%\n";
+        $emailContent .= "Ежемесячная стоимость топлива: " . $this->formatNumber($monthlyCost) . "\n";
+        $emailContent .= "Общая скидка: {$totalDiscount}%\n";
+        $emailContent .= "Ежемесячная экономия: " . $this->formatNumber($monthlySavings) . "\n";
+        $emailContent .= "Годовая экономия: " . $this->formatNumber($yearlySavings) . "\n\n";
         $emailContent .= "Данные формы:\n";
-        $emailContent .= "ИНН: {$request->input('inn')}\n";
-        $emailContent .= "Телефон: {$request->input('phone')}\n";
-        $emailContent .= "Email: {$request->input('email')}\n";
+        $emailContent .= json_encode($validated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        Mail::raw($emailContent, function ($message) use ($request) {
-            $message->to($request->input('email'))
-                ->subject('Результаты расчета тарифа');
+        // Send email
+        Mail::raw($emailContent, function($message) use ($validated) {
+            $message->to($validated['email'])
+                   ->subject('Результаты расчета тарифа');
         });
 
-        return response()->json(['message' => 'Ваша заявка успешно отправлена!']);
+        return response()->json(['success' => true]);
     }
 
     private function getTariff(string $fuelType, int $pumping): string
@@ -147,5 +139,23 @@ class CalculatorController extends Controller
     private function formatNumber(float $number): string
     {
         return number_format($number, 0, '.', ' ') . ' ₽';
+    }
+
+    private function calculateMonthlyCost(string $fuelType, int $pumping, string $brand): float
+    {
+        // Calculate base cost
+        $baseCost = self::FUEL_PRICES[$fuelType] * $pumping;
+
+        // Get tariff based on fuel type and pumping volume
+        $tariff = $this->getTariff($fuelType, $pumping);
+
+        // Get tariff discount percentage
+        $tariffDiscount = self::TARIFF_DISCOUNTS[$tariff];
+
+        // Calculate tariff discount amount
+        $tariffDiscountAmount = ($baseCost * $tariffDiscount) / 100;
+
+        // Return monthly cost after tariff discount
+        return $baseCost - $tariffDiscountAmount;
     }
 }
