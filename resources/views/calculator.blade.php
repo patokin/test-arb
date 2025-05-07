@@ -49,7 +49,6 @@
                     <div class="fuel-tab active" data-value="petrol">Бензин</div>
                     <div class="fuel-tab" data-value="gas">Газ</div>
                     <div class="fuel-tab" data-value="diesel">ДТ</div>
-                    <div class="tab-indicator"><div class="tab-indicator-active"></div></div>
                     <input type="hidden" name="fuelType" id="fuelType" value="petrol">
                 </div>
 
@@ -78,14 +77,7 @@
                 </div>
 
                 <div class="card-container">
-                    <div class="visa-card">
-                        <div class="visa-logo">VISA</div>
-                        <div class="card-number">•••• •••• •••• 4423</div>
-                        <div class="card-holder-info">
-                            <div class="card-holder">Jonah Hawes</div>
-                            <div class="card-expiry">17/11</div>
-                        </div>
-                    </div>
+
                 </div>
 
                 <div class="gas-station-info">
@@ -305,7 +297,8 @@
         $('.fuel-tab').on('click', function() {
             $('.fuel-tab').removeClass('active');
             $(this).addClass('active');
-            $('#fuelType').val($(this).data('value'));
+            let value = $(this).data('value');
+            $('#fuelType').val(value);
             updateBrands();
             calculateSavings();
         });

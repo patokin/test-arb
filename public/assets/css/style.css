@@ -169,10 +169,12 @@ body {
     cursor: pointer;
     color: #6f6f6f;
     position: relative;
+    border-bottom: 4px #e0e7e9 solid;
 }
 
 .fuel-tab.active {
     color: #000000;
+    border-bottom-color: #00cfcc;
 }
 
 .tab-indicator {
@@ -330,50 +332,10 @@ body {
 
 .card-container {
     margin-bottom: 30px;
-}
-
-.visa-card {
+    background: url('/assets/images/img_rectangle_38.png') no-repeat center;
+    background-size: contain;
     width: 100%;
-    max-width: 326px;
     height: 200px;
-    background: linear-gradient(120deg, #2a9d8f 0%, #3aafb9 100%);
-    border-radius: 15px;
-    padding: 20px;
-    color: #ffffff;
-    position: relative;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.visa-logo {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 30px;
-    font-weight: bold;
-    font-style: italic;
-}
-
-.card-number {
-    font-size: 18px;
-    letter-spacing: 2px;
-    margin-top: 40px;
-}
-
-.card-holder-info {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-}
-
-.card-holder {
-    font-size: 16px;
-}
-
-.card-expiry {
-    font-size: 16px;
 }
 
 .gas-station-info {
