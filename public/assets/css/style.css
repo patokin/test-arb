@@ -653,7 +653,6 @@ body {
     margin-bottom: 15px;
     display: none;
     text-align: left;
-    width: 477px;
 }
 
 @media (max-width: 900px) {
@@ -672,6 +671,15 @@ body {
     .input-field, .submit-button {
         width: 100%;
     }
+
+    .container {
+        display: block;
+    }
+
+    .left-panel,
+    .right-panel {
+        width: auto;
+    }
 }
 
 @media (max-width: 480px) {
@@ -687,4 +695,5 @@ body {
     .submit-button {
         font-size: 18px;
     }
+
 }

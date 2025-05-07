@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class CalculatorController extends Controller
 {
@@ -38,10 +39,17 @@ class CalculatorController extends Controller
             'pumping' => 'required|numeric|min:0',
             'fuelType' => 'required|in:petrol,gas,diesel',
             'brand' => 'required',
-            'services' => 'required',
-            'promo' => 'required|numeric'
+            'inn' => 'required',
+            'phone' => 'required|min:1|max:13',
+            'email' => 'required|email',
+            'services' => '',
+            'promo' => 'required'
         ]);
 
+        Mail::raw('Простой текст письма', function ($message) {
+            $message->to('test@example.com')
+                ->subject('Тестовая тема');
+        });
         // Here you would typically save the data to a database
         // For now, we'll just return a success message
         return response()->json([
@@ -101,10 +109,10 @@ class CalculatorController extends Controller
     private function getServicesMultiplier($services)
     {
         if (empty($services)) return 1.0;
-        
+
         $servicesArray = explode(',', $services);
         $multiplier = 1.0;
-        
+
         foreach ($servicesArray as $service) {
             $multiplier += match($service) {
                 'Штрафы' => 0.1,
@@ -119,7 +127,7 @@ class CalculatorController extends Controller
                 default => 0
             };
         }
-        
+
         return $multiplier;
     }
-} 
+}

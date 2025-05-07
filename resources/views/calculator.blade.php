@@ -18,9 +18,10 @@
                     <label class="region-label" for="region-select">Укажите регион передвижения</label>
                     <div class="region-value">
                         <select id="region-select" name="region" class="region-select">
-                            <option value="1">Регион 1 (макс. 1200 тонн)</option>
-                            <option value="2">Регион 2 (макс. 800 тонн)</option>
                             <option value="3">Регион 3 (макс. 500 тонн)</option>
+                            <option value="2">Регион 2 (макс. 800 тонн)</option>
+                            <option value="1">Регион 1 (макс. 1200 тонн)</option>
+
                         </select>
                         <img src="{{ asset('assets/images/img_vector_2.svg') }}" alt="Dropdown arrow" class="dropdown-arrow">
                     </div>
@@ -127,17 +128,24 @@
             <button class="close-button" aria-label="Закрыть"></button>
             <h1 class="modal-title">Заказать тариф «Избранный»</h1>
 
-            <div class="form-container">
-                <input type="text" class="input-field" id="inn" placeholder="Номер ИНН">
+            <form id="modalForm" class="form-container">
+                @csrf
+                <input type="hidden" name="promo" id="modal-promo">
+                <input type="hidden" name="region" id="modal-region">
+                <input type="hidden" name="pumping" id="modal-pumping">
+                <input type="hidden" name="fuelType" id="modal-fuelType">
+                <input type="hidden" name="brand" id="modal-brand">
+                <input type="hidden" name="services" id="modal-services">
+                <input type="text" name="inn" class="input-field" id="inn" placeholder="Номер ИНН">
                 <div class="error-message" id="inn-error">Пожалуйста, введите корректный ИНН</div>
 
-                <input type="tel" class="input-field" id="phone" placeholder="Телефон для связи">
+                <input type="tel" name="phone" class="input-field" id="phone" placeholder="Телефон для связи">
                 <div class="error-message" id="phone-error">Пожалуйста, введите корректный номер телефона</div>
 
-                <input type="email" class="input-field" id="email" placeholder="E-mail для связи">
+                <input type="email" name="email" class="input-field" id="email" placeholder="E-mail для связи">
                 <div class="error-message" id="email-error">Пожалуйста, введите корректный email</div>
 
-                <label class="checkbox-container">
+                <label class="checkbox-container" for="consent">
                     <div class="custom-checkbox" id="consent-checkbox">
                         <span class="checkmark"></span>
                     </div>
@@ -147,11 +155,13 @@
                 <div class="error-message" id="consent-error">Необходимо согласие на обработку персональных данных</div>
 
                 <button class="submit-button" id="submit-btn">Заказать тариф «Избранный»</button>
-            </div>
+            </form>
         </div>
     </div>
 
     <script>
+        const regions = [0,1200,800,500];
+
         const brands = {
             petrol: [
                 { name: 'Shell', logo: 'img_vector.svg' },
@@ -265,6 +275,7 @@
                 `);
             });
             $('#promo').val(promos[tariff][0]);
+            $('#modal-promo').val(tariff);
         }
 
         function getPromoDescription(value) {
@@ -341,6 +352,11 @@
                 success: function(data) {
                     $('#yearly-savings').text(data.yearly_savings);
                     $('#monthly-savings').text(data.monthly_savings);
+                    $('#modal-region').val($('#region-select option:selected').text());
+                    $('#modal-pumping').val($('#pumping').val());
+                    $('#modal-fuelType').val($('#fuelType').val());
+                    $('#modal-brand').val($('#brand').val());
+                    $('#modal-services').val($('#services').value);
                 },
                 error: function(xhr) {
                     console.error('Error calculating savings:', xhr.responseJSON.error);
@@ -349,6 +365,7 @@
         }
 
         // Volume slider functionality
+        let maxPumping = regions[$('#region-select').val()];
         let isDragging = false;
         const slider = $('.slider');
         const thumb = $('.slider-thumb');
@@ -356,12 +373,27 @@
         const volumeDisplay = $('#volume-display');
         const pumpingInput = $('#pumping');
 
+        $('#region-select').on('change', function (){
+            let index = $('#region-select').val();
+            maxPumping = regions[index];
+            $('.slider-labels').children().eq(1).text(parseInt(maxPumping/2)+' тонн');
+            $('.slider-labels').children().eq(2).text(maxPumping+' тонн');
+            volumeDisplay.text(pumpingInput.val());
+            if ($('#pumping').val()>maxPumping){
+                $('.slider-thumb').css('left','100%');
+                $('.slider-fill').css('width','100%');
+                pumpingInput.val(maxPumping);
+                volumeDisplay.text(maxPumping);
+            }
+            updateBrands();
+            calculateSavings();
+        });
+
         function updateSliderPosition(clientX) {
             const sliderRect = slider[0].getBoundingClientRect();
             let position = (clientX - sliderRect.left) / sliderRect.width;
             position = Math.max(0, Math.min(1, position));
-
-            const value = Math.round(position * 500);
+            const value = Math.round(position * maxPumping);
             volumeDisplay.text(value);
             pumpingInput.val(value);
 
@@ -428,7 +460,7 @@
             });
 
             // Toggle checkbox
-            consentCheckbox.click(function() {
+            $('.checkbox-container').click(function() {
                 consentInput.prop('checked', !consentInput.prop('checked'));
                 if (consentInput.prop('checked')) {
                     consentCheckbox.css('backgroundColor', '#00cfcc');
@@ -483,7 +515,8 @@
             });
 
             // Form submission
-            submitButton.click(function() {
+            submitButton.click(function(e) {
+                e.preventDefault();
                 let isValid = true;
 
                 if (!validateInn(innInput.val())) {
@@ -507,9 +540,19 @@
                 }
 
                 if (isValid) {
-                    // Here you would typically send the form data to the server
-                    alert('Форма успешно отправлена!');
-                    modalOverlay.css('display', 'none');
+                    $.ajax({
+                        url: '{{ route("calculator.submit") }}',
+                        method: 'POST',
+                        data: $('#modalForm').serialize(),
+                        success: function(data) {
+                            alert('Форма успешно отправлена!');
+                            modalOverlay.css('display', 'none');
+                        },
+                        error: function(xhr) {
+                            console.error('Error calculating savings:', xhr.responseJSON.error);
+                            alert('Ошибка!');
+                        }
+                    });
                 }
             });
         });
