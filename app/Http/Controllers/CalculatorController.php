@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class CalculatorController extends Controller
 {
@@ -58,8 +59,54 @@ class CalculatorController extends Controller
         $validated = $request->validate([
             'inn' => 'required|digits_between:10,12',
             'phone' => 'required|regex:/^\+?[78][-\(]?\d{3}\)?-?\d{3}-?\d{2}-?\d{2}$/',
-            'email' => 'required|email'
+            'email' => 'required|email',
+            'region' => 'required',
+            'pumping' => 'required|numeric',
+            'fuelType' => 'required|in:petrol,gas,diesel',
+            'brand' => 'required',
+            'services' => 'required',
+            'promo' => 'required|numeric'
         ]);
+
+        $fuelType = $request->input('fuelType');
+        $pumping = (int)$request->input('pumping');
+        $promoDiscount = (int)$request->input('promo');
+
+        $tariff = $this->getTariff($fuelType, $pumping);
+        $tariffDiscount = self::TARIFF_DISCOUNTS[$tariff];
+
+        $baseCost = self::FUEL_PRICES[$fuelType] * $pumping;
+        $tariffDiscountAmount = ($baseCost * $tariffDiscount) / 100;
+        $promoDiscountAmount = ($baseCost * $promoDiscount) / 100;
+
+        $monthlyCost = $baseCost - ($tariffDiscountAmount + $promoDiscountAmount);
+        $yearlyCost = $monthlyCost * 12;
+
+        $totalDiscount = $tariffDiscount + $promoDiscount;
+        $monthlySavings = $tariffDiscountAmount + $promoDiscountAmount;
+        $yearlySavings = $monthlySavings * 12;
+
+        $emailContent = "Результаты расчета:\n\n";
+        $emailContent .= "Регион: {$request->input('region')}\n";
+        $emailContent .= "Прокачка: {$pumping} тонн\n";
+        $emailContent .= "Тип топлива: " . $this->getFuelTypeName($fuelType) . "\n";
+        $emailContent .= "Бренд: {$request->input('brand')}\n";
+        $emailContent .= "Дополнительные услуги: {$request->input('services')}\n";
+        $emailContent .= "Тариф: {$tariff}\n";
+        $emailContent .= "Промо-акция: {$promoDiscount}%\n";
+        $emailContent .= "Стоимость топлива в месяц: " . $this->formatNumber($monthlyCost) . "\n";
+        $emailContent .= "Суммарная скидка: {$totalDiscount}%\n";
+        $emailContent .= "Экономия в месяц: " . $this->formatNumber($monthlySavings) . "\n";
+        $emailContent .= "Экономия в год: " . $this->formatNumber($yearlySavings) . "\n\n";
+        $emailContent .= "Данные формы:\n";
+        $emailContent .= "ИНН: {$request->input('inn')}\n";
+        $emailContent .= "Телефон: {$request->input('phone')}\n";
+        $emailContent .= "Email: {$request->input('email')}\n";
+
+        Mail::raw($emailContent, function ($message) use ($request) {
+            $message->to($request->input('email'))
+                ->subject('Результаты расчета тарифа');
+        });
 
         return response()->json(['message' => 'Ваша заявка успешно отправлена!']);
     }
@@ -85,6 +132,16 @@ class CalculatorController extends Controller
             default:
                 return 'Эконом';
         }
+    }
+
+    private function getFuelTypeName(string $fuelType): string
+    {
+        return match($fuelType) {
+            'petrol' => 'Бензин',
+            'gas' => 'Газ',
+            'diesel' => 'ДТ',
+            default => $fuelType
+        };
     }
 
     private function formatNumber(float $number): string

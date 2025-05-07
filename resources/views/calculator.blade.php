@@ -221,7 +221,7 @@
             servicesGrid.empty();
 
             services.forEach((service, index) => {
-                const isActive = index === 0 ? 'active' : '';
+                const isActive = '';
                 let iconHtml = '';
 
                 if (service.icon === 'parking') {
@@ -273,7 +273,7 @@
             const fuelType = $('#fuelType').val();
             const pumping = parseInt($('#pumping').val());
             const tariff = getTariff(fuelType, pumping);
-            
+
             $('#current-tariff').text(tariff);
             updatePromo(tariff);
             calculateSavings();
@@ -286,7 +286,7 @@
             promos[tariff].forEach((value, index) => {
                 const isActive = index === promos[tariff].length - 1 ? 'active' : '';
                 promoOptions.append(`
-                    <div class="promo-option">
+                    <div class="promo-option" data-value="${value}">
                         <div class="promo-circle ${isActive}">
                             <div class="promo-check">
                                 <img src="{{ asset('assets/images/img_vector_13.svg') }}" alt="Check icon" class="promo-check-icon">
@@ -302,17 +302,17 @@
 
         function getPromoDescription(value) {
             switch(value) {
-                case 50: return 'Экономии на штрафах';
-                case 20: return 'Возврат НДС';
-                case 5: return 'Скидка на мойку';
-                case 2: return 'Скидка на топливо';
+                case 50: return 'Премиум';
+                case 20: return 'Избранный';
+                case 5: return 'Эконом';
+                case 2: return 'Эконом';
                 default: return '';
             }
         }
 
         function calculateSavings() {
             const formData = $('#calculatorForm').serialize();
-            
+
             $.ajax({
                 url: '{{ route("calculator.calculate") }}',
                 method: 'POST',
@@ -367,7 +367,7 @@
         $('#promo-options').on('click', '.promo-option', function() {
             $('.promo-circle, .promo-value, .promo-description').removeClass('active');
             $(this).find('.promo-circle, .promo-value, .promo-description').addClass('active');
-            const promoValue = $(this).find('.promo-value').text().replace('%', '');
+            const promoValue = $(this).data('value');
             $('#promo').val(promoValue);
             calculateSavings();
         });
